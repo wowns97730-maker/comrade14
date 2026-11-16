@@ -4,10 +4,15 @@
   --red: #b01c2e;
   --gut: clamp(16px, 3vw, 40px);
   --cols: 6;
+  /* 노란 망치 커서: 기본 / 누를 수 있는 곳 위에서는 내려치는 각도 */
+  --cur: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Cg transform='rotate(-45 16 16)' fill='%23f7c600' stroke='%23000' stroke-width='1.1' stroke-linejoin='round'%3E%3Cpath d='M14.2 10h3.6v20h-3.6z'/%3E%3Cpath d='M7 3.5h12.5l4.5 4v3.5H7z'/%3E%3C/g%3E%3C/svg%3E") 9 9, auto;
+  --hit: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Cg transform='rotate(-75 16 16)' fill='%23f7c600' stroke='%23000' stroke-width='1.1' stroke-linejoin='round'%3E%3Cpath d='M14.2 10h3.6v20h-3.6z'/%3E%3Cpath d='M7 3.5h12.5l4.5 4v3.5H7z'/%3E%3C/g%3E%3C/svg%3E") 7 14, pointer;
 }
 
 * { box-sizing: border-box; }
-html { scrollbar-width: none; }
+html { scrollbar-width: none; cursor: var(--cur); }
+a, button, .gauge { cursor: var(--hit) !important; }
+button:disabled { cursor: var(--cur) !important; }
 html::-webkit-scrollbar { display: none; }
 body {
   margin: 0;
@@ -117,7 +122,7 @@ footer { margin-top: 70px; }
 .sizes button.on { border-color: var(--ink); background: var(--ink); color: #fff; }
 .order { display: block; width: 100%; height: 44px; line-height: 44px; text-align: center; background: var(--ink); color: #fff; margin-top: 22px; transition: background .2s; }
 .order:hover { background: var(--red); }
-.order.off { background: none; color: var(--mute); border: 1px solid #ddd; cursor: default; }
+.order.off { background: none; color: var(--mute); border: 1px solid #ddd; cursor: var(--cur); }
 .pager { display: flex; justify-content: space-between; color: var(--mute); margin-top: 22px; }
 .pager a:hover { color: var(--ink); }
 
