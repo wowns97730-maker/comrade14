@@ -27,6 +27,9 @@
   }
   var main = document.getElementById("main");
   var size = null, heroNo = null, firstGrid = true;
+  /* 홈에서 상품으로 들어갈 때의 스크롤 위치를 기억해 두었다가 돌아올 때 되돌린다 */
+  var gridY = 0, fromGrid = false;
+  if ("scrollRestoration" in history) history.scrollRestoration = "manual";
   var calm = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   function esc(s) {
@@ -76,6 +79,7 @@
       : '<span class="order off">' + priceText(p) + "</span>";
 
     main.innerHTML =
+      '<a class="back" href="#/">← Back</a>' +
       '<div class="product">' +
         '<div class="product-img">' + tilt(p.images[0] || "", p.name, true, "pimg") + thumbs + "</div>" +
         '<div class="info">' +
@@ -99,8 +103,15 @@
       /* 누른 배지가 상품 페이지 이미지로 이어지도록 표시 */
       main.querySelectorAll(".tilt").forEach(function (t) { t.style.viewTransitionName = ""; });
       item.querySelector(".tilt").style.viewTransitionName = "hero";
+      gridY = window.scrollY;
+      fromGrid = true;
       return;
     }
+    /* Back: 홈에서 들어왔으면 브라우저 뒤로 가기와 똑같이 돌아간다 */
+    if (e.target.closest(".back") && fromGrid) { e.preventDefault(); history.back(); return; }
+    /* 이전/다음 상품은 기록을 쌓지 않아서, 뒤로 가기 한 번이면 홈으로 나간다 */
+    var pg = e.target.closest(".pager a");
+    if (pg) { e.preventDefault(); location.replace(pg.getAttribute("href")); return; }
     var t = e.target.closest("[data-img],[data-size],#order");
     if (!t) return;
     if (t.dataset.img) {
@@ -155,9 +166,18 @@
     var i = find(h);
     function draw() {
       active = null;
-      if (h === "admin") Admin.render(main, { sb: sb, items: function () { return items; }, reload: load });
-      else if (i < 0) renderGrid(); else renderProduct(i);
-      window.scrollTo(0, 0);
+      if (h === "admin") { Admin.render(main, { sb: sb, items: function () { return items; }, reload: load }); gridY = 0; window.scrollTo(0, 0); }
+      else if (i < 0) {
+        renderGrid();
+        fromGrid = false;
+        window.scrollTo(0, gridY);
+        /* 이전/다음으로 다른 상품까지 넘겨봤다면 그 상품이 보이는 곳으로 맞춘다 */
+        var el = heroNo && main.querySelector('[data-no="' + heroNo + '"]');
+        if (el) {
+          var r = el.getBoundingClientRect();
+          if (r.top < 0 || r.bottom > window.innerHeight) el.scrollIntoView({ block: "center" });
+        }
+      } else { renderProduct(i); window.scrollTo(0, 0); }
     }
     if (document.startViewTransition && !calm) document.startViewTransition(draw); else draw();
   }
@@ -170,6 +190,10 @@
   document.getElementById("foot-mail").href = "mailto:" + SITE.email;
   document.getElementById("foot-ig").href = "https://instagram.com/" + SITE.instagram;
 
+  document.addEventListener("keydown", function (e) {
+    var b = e.key === "Escape" && main.querySelector(".back");
+    if (b) b.click();
+  });
   window.addEventListener("hashchange", route);
   connect().then(load).catch(function () { sb = null; return load(); }).then(route);
 })();

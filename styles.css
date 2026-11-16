@@ -77,6 +77,8 @@ footer { margin-top: 70px; }
 @keyframes rise { from { opacity: 0; transform: translateY(18px) scale(.94); } }
 
 /* product */
+.back { display: block; max-width: 1100px; margin: 0 auto; color: var(--mute); padding: 6px 0; }
+.back:hover { color: var(--ink); }
 .product {
   display: grid;
   grid-template-columns: minmax(0, 1.2fr) minmax(260px, 360px);
