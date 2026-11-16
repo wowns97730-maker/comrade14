@@ -79,7 +79,6 @@
       : '<span class="order off">' + priceText(p) + "</span>";
 
     main.innerHTML =
-      '<a class="back" href="#/">← Back</a>' +
       '<div class="product">' +
         '<div class="product-img">' + tilt(p.images[0] || "", p.name, true, "pimg") + thumbs + "</div>" +
         '<div class="info">' +
@@ -107,8 +106,6 @@
       fromGrid = true;
       return;
     }
-    /* Back: 홈에서 들어왔으면 브라우저 뒤로 가기와 똑같이 돌아간다 */
-    if (e.target.closest(".back") && fromGrid) { e.preventDefault(); history.back(); return; }
     /* 이전/다음 상품은 기록을 쌓지 않아서, 뒤로 가기 한 번이면 홈으로 나간다 */
     var pg = e.target.closest(".pager a");
     if (pg) { e.preventDefault(); location.replace(pg.getAttribute("href")); return; }
@@ -166,6 +163,8 @@
     var i = find(h);
     function draw() {
       active = null;
+      backEl.hidden = i < 0 && h !== "admin";
+      zoomEl.hidden = !backEl.hidden;
       if (h === "admin") { Admin.render(main, { sb: sb, items: function () { return items; }, reload: load }); gridY = 0; window.scrollTo(0, 0); }
       else if (i < 0) {
         renderGrid();
@@ -179,7 +178,7 @@
         }
       } else { renderProduct(i); window.scrollTo(0, 0); }
     }
-    if (document.startViewTransition && !calm) document.startViewTransition(draw); else draw();
+    if (document.startViewTransition && !calm) document.startViewTransition(draw).ready.catch(function () {}); else draw();
   }
 
   /* 하단 로고 띠 */
@@ -190,9 +189,77 @@
   document.getElementById("foot-mail").href = "mailto:" + SITE.email;
   document.getElementById("foot-ig").href = "https://instagram.com/" + SITE.instagram;
 
+  /* Back: 홈에서 들어왔으면 브라우저 뒤로 가기와 똑같이 돌아간다 */
+  var backEl = document.getElementById("back"), zoomEl = document.getElementById("zoom");
+  backEl.addEventListener("click", function (e) {
+    if (fromGrid) { e.preventDefault(); history.back(); }
+  });
+
+  /* 확대·축소 게이지: 한 줄에 놓이는 개수를 바꾼다 (폰 1~3, PC 1~10) */
+  var gauge = document.getElementById("gauge"), zin = document.getElementById("z-in"), zout = document.getElementById("z-out");
+  var mq = window.matchMedia("(max-width: 760px)"), cols = 0, zoomRun = 0;
+  function maxCols() { return mq.matches ? 3 : 10; }
+  function colsKey() { return "c14-cols-" + (mq.matches ? "m" : "d"); }
+  function savedCols() {
+    var v = 0;
+    try { v = parseInt(localStorage.getItem(colsKey()), 10); } catch (e) {}
+    return v >= 1 && v <= maxCols() ? v : (mq.matches ? 2 : 6);
+  }
+  function paint() {
+    var m = maxCols(), on = m - cols + 1, h = "";
+    for (var n = 1; n <= m; n++) h += "<i" + (n <= on ? ' class="on"' : "") + "></i>";
+    gauge.innerHTML = h;
+    zin.disabled = cols <= 1;
+    zout.disabled = cols >= m;
+    document.documentElement.style.setProperty("--cols", cols);
+  }
+  function setCols(n, smooth) {
+    n = Math.max(1, Math.min(maxCols(), n));
+    if (n === cols) return;
+    try { localStorage.setItem(colsKey(), n); } catch (e) {}
+    var its = main.querySelectorAll(".item"), anchor = null;
+    /* 보고 있던 상품이 확대·축소 뒤에도 화면에 남도록 기준을 잡는다 */
+    if (window.scrollY > 0) for (var k = 0; k < its.length; k++) {
+      if (its[k].getBoundingClientRect().bottom > 64) { anchor = its[k]; break; }
+    }
+    function apply() {
+      cols = n;
+      paint();
+      if (anchor) anchor.scrollIntoView({ block: "center" });
+    }
+    if (smooth && document.startViewTransition && !calm && its.length && its.length <= 80) {
+      /* 각 상품이 새 자리로 미끄러지듯 옮겨 간다 */
+      var run = ++zoomRun;
+      its.forEach(function (el, k) {
+        el.querySelector(".tilt").style.viewTransitionName = "";
+        el.style.viewTransitionName = "it" + k;
+      });
+      var clear = function () {
+        if (run === zoomRun) its.forEach(function (el) { el.style.viewTransitionName = ""; });
+      };
+      var vt = document.startViewTransition(apply);
+      vt.ready.catch(function () {});
+      vt.finished.then(clear, clear);
+    } else apply();
+  }
+  zin.addEventListener("click", function () { setCols(cols - 1, true); });
+  zout.addEventListener("click", function () { setCols(cols + 1, true); });
+  function drag(e) {
+    var r = gauge.getBoundingClientRect(), m = maxCols();
+    var level = Math.max(1, Math.min(m, Math.ceil((e.clientX - r.left) / r.width * m)));
+    setCols(m - level + 1, false);
+  }
+  gauge.addEventListener("pointerdown", function (e) { gauge.setPointerCapture(e.pointerId); drag(e); });
+  gauge.addEventListener("pointermove", function (e) { if (gauge.hasPointerCapture(e.pointerId)) drag(e); });
+  mq.addEventListener("change", function () { cols = savedCols(); paint(); });
+  cols = savedCols();
+  paint();
+
   document.addEventListener("keydown", function (e) {
-    var b = e.key === "Escape" && main.querySelector(".back");
-    if (b) b.click();
+    if (/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return;
+    if (e.key === "Escape" && !backEl.hidden) backEl.click();
+    else if (!zoomEl.hidden && (e.key === "+" || e.key === "=")) setCols(cols - 1, true);
+    else if (!zoomEl.hidden && e.key === "-") setCols(cols + 1, true);
   });
   window.addEventListener("hashchange", route);
   connect().then(load).catch(function () { sb = null; return load(); }).then(route);
