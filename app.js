@@ -261,6 +261,42 @@
     else if (!zoomEl.hidden && (e.key === "+" || e.key === "=")) setCols(cols - 1, true);
     else if (!zoomEl.hidden && e.key === "-") setCols(cols + 1, true);
   });
+  /* 노란 망치 포인터: 화면에 직접 그려서 선명하고, 누르면 내려친다 */
+  if (window.matchMedia("(hover: hover) and (pointer: fine)").matches) {
+    var ham = document.createElement("div"), hx = 0, hy = 0;
+    ham.className = "ham-c";
+    ham.setAttribute("aria-hidden", "true");
+    ham.innerHTML = '<svg viewBox="0 0 32 32"><g transform="rotate(-45 16 16)" fill="#f7c600">' +
+      '<path d="M14.2 10h3.6v20h-3.6z"/><path d="M7 3.5h12.5l4.5 4v3.5H7z"/></g></svg>';
+    document.body.appendChild(ham);
+    document.documentElement.classList.add("ham");
+    document.addEventListener("pointermove", function (e) {
+      if (e.pointerType !== "mouse") return;
+      hx = e.clientX; hy = e.clientY;
+      ham.style.transform = "translate3d(" + hx + "px," + hy + "px,0)";
+      ham.classList.add("show");
+    });
+    document.addEventListener("pointerdown", function (e) {
+      if (e.pointerType !== "mouse") return;
+      ham.classList.remove("hit");
+      void ham.offsetWidth;
+      ham.classList.add("hit");
+      if (calm) return;
+      var x = e.clientX, y = e.clientY;
+      /* 망치가 닿는 순간 튀는 불꽃 */
+      setTimeout(function () {
+        var sp = document.createElement("div");
+        sp.className = "spark";
+        sp.style.left = x + "px"; sp.style.top = y + "px";
+        sp.innerHTML = '<svg viewBox="0 0 44 44" fill="none" stroke="#f7c600" stroke-width="2.5" stroke-linecap="round">' +
+          '<path d="M22 4v8M22 32v8M4 22h8M32 22h8M9.3 9.3l5.6 5.6M29.1 29.1l5.6 5.6M34.7 9.3l-5.6 5.6M14.9 29.1l-5.6 5.6"/></svg>';
+        document.body.appendChild(sp);
+        setTimeout(function () { sp.remove(); }, 400);
+      }, 130);
+    });
+    document.documentElement.addEventListener("mouseleave", function () { ham.classList.remove("show"); });
+  }
+
   window.addEventListener("hashchange", route);
   connect().then(load).catch(function () { sb = null; return load(); }).then(route);
 })();
